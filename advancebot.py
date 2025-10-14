@@ -1,9 +1,11 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import random
-import json
+import random,json
 from datetime import datetime
+from Crypto.Cipher import AES
+import base64
+import hashlib
 
 # --------------------------- APP CONFIG ---------------------------
 st.set_page_config(page_title="Hospital Data Insight Lab", page_icon="🏥", layout="wide")
@@ -98,6 +100,28 @@ for col in ['Admission_Date', 'Discharge_Date', 'Follow_Up_Date', 'Next_Appointm
 numeric_cols = df.select_dtypes(include=["number"]).columns.tolist()
 cat_cols = df.select_dtypes(exclude=["number", "datetime"]).columns.tolist()
 
+    # -------------------------- Encode/Decode --------------------------
+
+def encode(data):
+    key = 'aj'
+    s = json.dumps(data, separators=(',', ':')).encode()
+    k, iv = hashlib.sha256(key.encode()).digest(), b'\0'*16
+    pad = 16 - len(s) % 16
+    enc = AES.new(k, AES.MODE_CBC, iv).encrypt(s + bytes([pad])*pad)
+    return base64.urlsafe_b64encode(enc).decode()
+
+def decode(token):
+    key = 'aj'
+    try:
+        k, iv = hashlib.sha256(key.encode()).digest(), b'\0'*16
+        d = AES.new(k, AES.MODE_CBC, iv).decrypt(base64.urlsafe_b64decode(token))
+        pad_len = d[-1]
+        if pad_len < 1 or pad_len > 16:
+            raise ValueError("Bad padding")
+        return json.loads(d[:-pad_len].decode())
+    except Exception:
+        return None  # Return None if decryption fails
+
 # --------------------------- USER LOGIN ---------------------------
 if "username" not in st.session_state:
     with st.container():
@@ -108,7 +132,7 @@ if "username" not in st.session_state:
             st.rerun()
 else:
     username = st.session_state.username
-    user_file = f"chat_history_{username}.json"
+    user_file = f"{encode(username)}.txt"
 
     # --------------------------- DATASET DOWNLOAD ---------------------------
     with st.container():
@@ -155,7 +179,7 @@ else:
     # --------------------------- LOAD HISTORY ---------------------------
     try:
         with open(f"History/{user_file}", "r") as f:
-            st.session_state.history = json.load(f)
+            st.session_state.history = decode(f.read())
             if st.session_state.history:
                 last = st.session_state.history[-1]["score"]
                 st.session_state.score.update(last)
@@ -275,7 +299,8 @@ else:
         st.session_state.history.append(record)
 
         with open(f"History/{user_file}", "w") as f:
-            json.dump(st.session_state.history, f, indent=4)
+            data = encode(st.session_state.history)
+            f.write(data)
 
         st.success("✅ Correct!" if is_correct else f"❌ Incorrect! Correct answer: {st.session_state.current_answer}")
         st.session_state.current_question, st.session_state.current_answer = generate_single_question(df, st.session_state.difficulty)
