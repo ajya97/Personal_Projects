@@ -87,7 +87,7 @@ st.divider()
 # --------------------------- BACKEND DATASET ---------------------------
 @st.cache_data
 def load_hospital_dataset():
-    return pd.read_csv("indian_hospital_patient_data_realistic.csv")
+    return pd.read_csv("Hospital_patient_data.csv")
 
 df = load_hospital_dataset()
 
@@ -154,7 +154,7 @@ else:
 
     # --------------------------- LOAD HISTORY ---------------------------
     try:
-        with open(user_file, "r") as f:
+        with open(f"History/{user_file}", "r") as f:
             st.session_state.history = json.load(f)
             if st.session_state.history:
                 last = st.session_state.history[-1]["score"]
@@ -274,7 +274,7 @@ else:
         }
         st.session_state.history.append(record)
 
-        with open(user_file, "w") as f:
+        with open(f"History/{user_file}", "w") as f:
             json.dump(st.session_state.history, f, indent=4)
 
         st.success("✅ Correct!" if is_correct else f"❌ Incorrect! Correct answer: {st.session_state.current_answer}")
