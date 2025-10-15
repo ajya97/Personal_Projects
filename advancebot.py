@@ -103,7 +103,7 @@ cat_cols = df.select_dtypes(exclude=["number", "datetime"]).columns.tolist()
     # -------------------------- Encode/Decode --------------------------
 
 def encode(data):
-    key = 'aj'
+    key = st.secrets["KEY"]
     s = json.dumps(data, separators=(',', ':')).encode()
     k, iv = hashlib.sha256(key.encode()).digest(), b'\0'*16
     pad = 16 - len(s) % 16
@@ -111,7 +111,7 @@ def encode(data):
     return base64.urlsafe_b64encode(enc).decode()
 
 def decode(token):
-    key = 'aj'
+    key = st.secrets["KEY"]
     try:
         k, iv = hashlib.sha256(key.encode()).digest(), b'\0'*16
         d = AES.new(k, AES.MODE_CBC, iv).decrypt(base64.urlsafe_b64decode(token))
