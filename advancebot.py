@@ -187,16 +187,9 @@ else:
         st.session_state.history = []
 
     # --------------------------- DIFFICULTY SELECTION ---------------------------
-    e,m,hard = 0,0,0 
-    for h in st.session_state.history: 
-        if h["difficulty"] == 'Easy': e += 1 
-        elif h["difficulty"] == 'Medium': m += 1 
-        else: hard += 1 # new_difficulty = 'Easy' 
-    if st.session_state.difficulty == 'Easy': per = (e*100)//156
-    elif st.session_state.difficulty == 'Medium': per = (m*100)//44 
-    else: per = (hard*100)//11
+    
     with st.container():
-        st.markdown(f"<h3 class='section-header'>🎯 Select Difficulty Level  {per}%</h3>", unsafe_allow_html=True)
+        st.markdown(f"<h3 class='section-header'>🎯 Select Difficulty Level</h3>", unsafe_allow_html=True)
         new_difficulty = st.radio("", ["Easy", "Medium", "Hard"], horizontal=True)
     st.divider()
 
@@ -250,18 +243,36 @@ else:
         return q, str(ans)
 
     # --------------------------- LOAD QUESTION ---------------------------
+    def generate_question(d,difficulty):
+        ques,ans = generate_single_question(d, difficulty)
+        for i in st.session_state.history:
+            if i["question"] == ques:
+                return generate_question(d,difficulty)
+        return ques,ans
     if "current_question" not in st.session_state:
-        st.session_state.current_question, st.session_state.current_answer = generate_single_question(df, st.session_state.difficulty)
+        st.session_state.current_question, st.session_state.current_answer = generate_question(df, st.session_state.difficulty)
 
     if new_difficulty != st.session_state.difficulty:
         st.session_state.difficulty = new_difficulty
-        st.session_state.current_question, st.session_state.current_answer = generate_single_question(df, st.session_state.difficulty)
+        st.session_state.current_question, st.session_state.current_answer = generate_question(df, st.session_state.difficulty)
         st.rerun()
 
     # --------------------------- SCOREBOARD ---------------------------
+    et,mt,ht = 0,0,0 
+    ec,mc,hc = 0,0,0
+    for h in st.session_state.history: 
+        if h["difficulty"] == 'Easy': 
+            if h['is_correct']: ec +=1
+            et += 1 
+        elif h["difficulty"] == 'Medium': 
+            if h['is_correct']: mc +=1
+            mt += 1 
+        else: 
+            if h['is_correct']: hc +=1
+            ht += 1
     st.markdown("<h3 class='section-header'>🏆 Scoreboard</h3>", unsafe_allow_html=True)
-    correct = st.session_state.score["correct"]
-    total = st.session_state.score["total"]
+    correct = (ec if st.session_state.difficulty == 'Easy' else (mc if st.session_state.difficulty == 'Medium' else hc))
+    total = (et if st.session_state.difficulty == 'Easy' else (mt if st.session_state.difficulty == 'Medium' else ht))
     percent = round(correct / total * 100, 2) if total > 0 else 0
 
     col1, col2, col3 = st.columns(3)
@@ -270,6 +281,7 @@ else:
     with col3: st.metric("🎯 Accuracy", f"{percent}%")
 
     st.divider()
+
 
     # --------------------------- QUESTION AREA ---------------------------
     st.markdown(f"<div class='question-box'>{st.session_state.current_question}</div>", unsafe_allow_html=True)
